@@ -1,0 +1,26 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Credential {
+  id                String   @id @default(uuid())  // Changed from auto() to uuid()
+  credentialID      String   @unique
+  transports        String   // We'll store as JSON string instead of array
+  userID            String
+  credentialPublicKey Bytes  // For storing Buffer
+  counter           Int
+} 
+
+model Challenge {
+  id     String @id @default(uuid())
+  userID String @unique
+  value  String
+}
