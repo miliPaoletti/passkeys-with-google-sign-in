@@ -1,6 +1,14 @@
 import { generateAuthenticationOptions } from "@simplewebauthn/server";
 import { db } from "../../../../lib/db";
 
+interface authProps {
+  id: string;
+  credentialID: string;
+  transports: string;
+  userID: string;
+  credentialPublicKey: Buffer;
+  counter: number;
+}
 /**
  * handles GET /api/auth/webauthn/authenticate.
  *
@@ -13,7 +21,7 @@ async function WebauthnAuthenticate() {
 
     const options = await generateAuthenticationOptions({
       rpID: process.env.APP_DOMAIN!,
-      allowCredentials: authenticators.map((auth) => ({
+      allowCredentials: authenticators.map((auth: authProps) => ({
         id: auth.credentialID,
         type: "public-key",
       })),
