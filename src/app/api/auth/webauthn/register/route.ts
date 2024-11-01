@@ -1,4 +1,3 @@
-import { NextApiRequest, NextApiResponse } from "next";
 import {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -7,19 +6,15 @@ import { getServerSession } from "next-auth";
 import { db } from "../../../../lib/db";
 import { AuthenticatorTransportFuture } from "@simplewebauthn/typescript-types";
 import { RegistrationResponseJSON } from "@simplewebauthn/typescript-types";
-
 import {
-  // DbCredential,
   getChallenge,
   saveChallenge,
   saveCredentials,
 } from "@/pages/api/webauthn";
-// import { NextRequest } from "next/server";
 
 const domain = process.env.APP_DOMAIN!;
 const origin = process.env.APP_ORIGIN!;
 const appName = process.env.APP_NAME!;
-// const dbName = process.env.WEBAUTHN_DBNAME!;
 
 /**
  * handles GET /api/auth/webauthn/register.
@@ -28,6 +23,7 @@ const appName = process.env.APP_NAME!;
  */
 
 async function handlePreRegister() {
+  // get the email from the current session
   const session = await getServerSession();
   const email = session?.user?.email;
 
@@ -38,11 +34,13 @@ async function handlePreRegister() {
     );
   }
 
+  // get the credentials for the user
   const credentials = await db.credential.findMany({
     where: { userID: email },
   });
 
   const options = await generateRegistrationOptions({
+    // domain the passkey is associated with
     rpID: domain,
     rpName: appName,
     userID: new TextEncoder().encode(email),
@@ -50,10 +48,12 @@ async function handlePreRegister() {
     attestationType: "none",
     authenticatorSelection: {
       userVerification: "preferred",
+      // works without user entering a username
       requireResidentKey: true,
     },
   });
 
+  // The excludeCredentials property of registration options avoid duplicate registrations from the same authenticator
   options.excludeCredentials = credentials.map((c) => ({
     id: c.credentialID,
     type: "public-key",
@@ -61,24 +61,27 @@ async function handlePreRegister() {
   }));
 
   try {
+    // challenge prevents reply attacks
+    // save the challenge in the database for later verification
     await saveChallenge({ userID: email, challenge: options.challenge });
 
-    // return Response.json(options);
     return new Response(JSON.stringify(options), { status: 200 });
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    console.log(error);
     return new Response(
       JSON.stringify({ message: "Could not set up challenge." }),
       { status: 500 }
     );
   }
 }
+
 /**
  * handles POST /api/auth/webauthn/register.
  *
  * This function verifies and stores user's public key.
  */
 async function handleRegister(req: Request) {
+  // get the email from the current session
   const session = await getServerSession();
   const email = session?.user?.email;
   if (!email) {
@@ -87,6 +90,7 @@ async function handleRegister(req: Request) {
       { status: 401 }
     );
   }
+  // get the challenge from the database
   const challenge = await getChallenge(email);
   if (!challenge) {
     return new Response(
@@ -98,7 +102,7 @@ async function handleRegister(req: Request) {
     );
   }
   const credential: RegistrationResponseJSON = await req.json();
-  
+
   const { verified, registrationInfo: info } = await verifyRegistrationResponse(
     {
       response: credential,
@@ -125,8 +129,8 @@ async function handleRegister(req: Request) {
     });
 
     return new Response(JSON.stringify({ success: true }), { status: 201 });
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    console.log(error);
     return new Response(
       JSON.stringify({
         success: false,
@@ -145,16 +149,3 @@ export async function GET() {
 export async function POST(req: Request) {
   return handleRegister(req);
 }
-
-// export default async function WebauthnRegister(
-//   req: NextApiRequest,
-//   res: NextApiResponse
-// ) {
-//   if (req.method === "GET") {
-//     return handlePreRegister(req, res);
-//   }
-//   if (req.method === "POST") {
-//     return handleRegister(req, res);
-//   }
-//   return res.status(404).json({ message: "The method is forbidden." });
-// }

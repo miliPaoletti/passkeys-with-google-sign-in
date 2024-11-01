@@ -14,7 +14,7 @@ model Credential {
   id                String   @id @default(uuid())  // Changed from auto() to uuid()
   credentialID      String   @unique
   transports        String   // We'll store as JSON string instead of array
-  userID            String
+  userID            String   @unique
   credentialPublicKey Bytes  // For storing Buffer
   counter           Int
 } 

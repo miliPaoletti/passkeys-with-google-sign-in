@@ -4,7 +4,6 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "../../../lib/db";
 import { getChallenge, saveChallenge } from "@/pages/api/webauthn";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
-import { base64URLStringToBuffer } from "@simplewebauthn/browser";
 import { Base64URLString } from "@simplewebauthn/typescript-types";
 
 const domain = process.env.APP_DOMAIN!;
@@ -27,10 +26,6 @@ const handler = NextAuth({
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-      //   is this enough for the refresh token ?
-      // https://next-auth.js.org/providers/google
-      //   or should we handle it in the database ?
-      // https://www.youtube.com/watch?app=desktop&v=-XYwEWKkgG0&ab_channel=WebDevCody
       authorization: {
         params: {
           prompt: "consent",
@@ -39,10 +34,6 @@ const handler = NextAuth({
         },
       },
     }),
-    // AppleProvider({
-    //   clientId: process.env.APPLE_ID,
-    //   clientSecret: process.env.APPLE_SECRET,
-    // }),
     CredentialsProvider({
       name: "webauthn",
       credentials: {},
@@ -60,6 +51,7 @@ const handler = NextAuth({
         } = req.body as authProps;
 
         await saveChallenge({ userID: id, challenge: challenge });
+
         const credential = {
           id,
           rawId,
@@ -108,7 +100,7 @@ const handler = NextAuth({
           }
           await db.credential.update({
             where: {
-              id: authenticator.id, // Note: using 'id' instead of '_id'
+              id: authenticator.id,
             },
             data: {
               counter: info.newCounter,
