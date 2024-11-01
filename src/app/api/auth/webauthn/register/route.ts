@@ -13,7 +13,7 @@ import {
   getChallenge,
   saveChallenge,
   saveCredentials,
-} from "../../../../lib/webauthn";
+} from "@/pages/api/webauthn";
 // import { NextRequest } from "next/server";
 
 const domain = process.env.APP_DOMAIN!;
@@ -48,7 +48,10 @@ async function handlePreRegister() {
     userID: new TextEncoder().encode(email),
     userName: email,
     attestationType: "none",
-    authenticatorSelection: { userVerification: "preferred" },
+    authenticatorSelection: {
+      userVerification: "preferred",
+      requireResidentKey: true,
+    },
   });
 
   options.excludeCredentials = credentials.map((c) => ({
@@ -57,13 +60,13 @@ async function handlePreRegister() {
     transports: [c.transports] as AuthenticatorTransportFuture[],
   }));
 
-  //   el challenge no se esta creando bien
   try {
     await saveChallenge({ userID: email, challenge: options.challenge });
 
     // return Response.json(options);
     return new Response(JSON.stringify(options), { status: 200 });
   } catch (err) {
+    console.log(err);
     return new Response(
       JSON.stringify({ message: "Could not set up challenge." }),
       { status: 500 }
@@ -76,7 +79,6 @@ async function handlePreRegister() {
  * This function verifies and stores user's public key.
  */
 async function handleRegister(req: Request) {
-  console.log("entre al handle  register - post");
   const session = await getServerSession();
   const email = session?.user?.email;
   if (!email) {
@@ -96,7 +98,7 @@ async function handleRegister(req: Request) {
     );
   }
   const credential: RegistrationResponseJSON = await req.json();
-  console.log("credentail,", credential);
+  
   const { verified, registrationInfo: info } = await verifyRegistrationResponse(
     {
       response: credential,
@@ -105,22 +107,14 @@ async function handleRegister(req: Request) {
       expectedChallenge: challenge,
     }
   );
-  console.log("asdl;fk");
 
-  //   const credential: RegistrationCredentialJSON = req.body;
-  //   const { verified, registrationInfo: info } = await verifyRegistrationResponse({
-  //       credential,
-  //       expectedRPID: domain,
-  //       expectedOrigin: origin,
-  //       expectedChallenge: challenge.value,
-  //   });
   if (!verified || !info) {
     return new Response(
       JSON.stringify({ success: false, message: "Something went wrong" }),
       { status: 500 }
     );
   }
-  console.log("despues del verify e info");
+
   try {
     await saveCredentials({
       credentialID: credential.id,
@@ -132,7 +126,7 @@ async function handleRegister(req: Request) {
 
     return new Response(JSON.stringify({ success: true }), { status: 201 });
   } catch (err) {
-    console.log("despues de tratar de save credentiesla");
+    console.log(err);
     return new Response(
       JSON.stringify({
         success: false,

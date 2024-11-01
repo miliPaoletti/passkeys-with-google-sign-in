@@ -1,15 +1,11 @@
 import { AuthenticatorTransportFuture } from "@simplewebauthn/typescript-types";
-import { db } from "./db";
-// import { Binary } from 'mongodb';
-
-const dbName = process.env.WEBAUTHN_DBNAME!;
+import { db } from "../../app/lib/db";
 
 export interface DbCredential {
   credentialID: string;
   userID: string;
   transports: AuthenticatorTransport[];
   credentialPublicKey: Buffer;
-  // Binary
   counter: number;
 }
 
@@ -45,6 +41,7 @@ export async function getChallenge(userID: string) {
   });
   return challengeObj.value;
 }
+
 /**
  * saveCredentials stores the user's public key in the database.
  * @param cred user's public key
