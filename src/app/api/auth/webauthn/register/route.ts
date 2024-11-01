@@ -16,6 +16,15 @@ const domain = process.env.APP_DOMAIN!;
 const origin = process.env.APP_ORIGIN!;
 const appName = process.env.APP_NAME!;
 
+interface credentialProps {
+  id: string;
+  credentialID: string;
+  transports: string;
+  userID: string;
+  credentialPublicKey: Buffer;
+  counter: number;
+}
+
 /**
  * handles GET /api/auth/webauthn/register.
  *
@@ -54,7 +63,7 @@ async function handlePreRegister() {
   });
 
   // The excludeCredentials property of registration options avoid duplicate registrations from the same authenticator
-  options.excludeCredentials = credentials.map((c) => ({
+  options.excludeCredentials = credentials.map((c: credentialProps) => ({
     id: c.credentialID,
     type: "public-key",
     transports: [c.transports] as AuthenticatorTransportFuture[],
